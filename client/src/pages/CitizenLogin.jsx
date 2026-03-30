@@ -10,6 +10,7 @@ export default function CitizenLogin() {
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
+  const [debugOtp, setDebugOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -18,8 +19,12 @@ export default function CitizenLogin() {
     if (!email.includes('@')) { setError('Please enter a valid email.'); return }
     setLoading(true); setError(null)
     try {
-      await api.citizenSendOTP(email)
+      const data = await api.citizenSendOTP(email)
+      setDebugOtp(data.debugOtp || '')
       setStep(2)
+      if (data.deliveryFailed) {
+        setError(data.message || 'OTP generated but email delivery failed.')
+      }
     } catch (err) {
       setError(err.error || 'Failed to send OTP')
     } finally { setLoading(false) }
@@ -72,6 +77,11 @@ export default function CitizenLogin() {
               <ShieldCheck className="w-8 h-8 text-green-500 mx-auto mb-2" />
               <p className="text-sm text-gray-600">OTP sent to <strong>{email}</strong></p>
             </div>
+            {debugOtp && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                Dev OTP: <strong>{debugOtp}</strong>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
               <input type="text" value={otp}

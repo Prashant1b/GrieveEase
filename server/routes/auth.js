@@ -21,6 +21,23 @@ function escapeRegex(value = '') {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function buildOtpResponse(base, otp, otpResult) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (otpResult?.success) {
+    return {
+      ...base,
+      deliveryFailed: false
+    };
+  }
+
+  return {
+    ...base,
+    deliveryFailed: true,
+    message: 'OTP generated but email delivery failed. Use the stored OTP for verification.',
+    ...(isProduction ? {} : { debugOtp: otp })
+  };
+}
+
 async function findOfficerByEmail(email) {
   if (!email) return null;
   const exact = await Officer.findOne({ email });
@@ -61,12 +78,12 @@ router.post('/officer/send-otp', async (req, res) => {
     officer.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await officer.save();
 
-    await sendOTP(officer.email, otp);
+    const otpResult = await sendOTP(officer.email, otp);
 
-    res.json({
+    res.json(buildOtpResponse({
       message: 'OTP sent to officer email',
       email: officer.email
-    });
+    }, otp, otpResult));
   } catch (err) {
     console.error('Officer send OTP error:', err);
     res.status(500).json({ error: 'Login failed' });
@@ -135,9 +152,9 @@ router.post('/citizen/send-otp', async (req, res) => {
     citizen.otpExpiry = otpExpiry;
     await citizen.save();
 
-    await sendOTP(email, otp);
+    const otpResult = await sendOTP(email, otp);
 
-    res.json({ message: 'OTP sent to your email', email });
+    res.json(buildOtpResponse({ message: 'OTP sent to your email', email }, otp, otpResult));
   } catch (err) {
     console.error('Send OTP error:', err);
     res.status(500).json({ error: 'Failed to send OTP' });

@@ -19,21 +19,27 @@ async function sendEmail({ to, subject, html }) {
     console.log(`[EMAIL MOCK] To: ${to} | Subject: ${subject}`);
     return { success: true, mock: true };
   }
-  try {
-    await axios.post('https://api.brevo.com/v3/smtp/email', {
-      sender: getSender(),
-      to: [{ email: to }],
-      subject,
-      htmlContent: html
-    }, {
-      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' }
-    });
-    console.log(`[EMAIL] Sent to ${to}: ${subject}`);
-    return { success: true };
-  } catch (err) {
-    console.error('[EMAIL ERROR]', err.response?.data || err.message);
-    return { success: false, error: err.message };
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await axios.post('https://api.brevo.com/v3/smtp/email', {
+        sender: getSender(),
+        to: [{ email: to }],
+        subject,
+        htmlContent: html
+      }, {
+        headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+        timeout: 20000
+      });
+      console.log(`[EMAIL] Sent to ${to}: ${subject}`);
+      return { success: true };
+    } catch (err) {
+      lastError = err;
+      console.error(`[EMAIL ERROR][Attempt ${attempt}]`, err.response?.data || err.message);
+    }
   }
+  const errorText = lastError?.response?.data?.message || lastError?.response?.data?.code || lastError?.message || 'Email delivery failed';
+  return { success: false, error: errorText };
 }
 
 async function sendOTP(email, otp) {

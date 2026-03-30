@@ -9,6 +9,7 @@ export default function OfficerLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
+  const [debugOtp, setDebugOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { login } = useAuth()
@@ -21,7 +22,11 @@ export default function OfficerLogin() {
     try {
       const data = await api.officerSendOTP(email, password)
       setEmail(data.email)
+      setDebugOtp(data.debugOtp || '')
       setStep(2)
+      if (data.deliveryFailed) {
+        setError(data.message || 'OTP generated but email delivery failed.')
+      }
     } catch (err) {
       setError(err.error || 'Failed to send OTP')
     } finally {
@@ -103,6 +108,11 @@ export default function OfficerLogin() {
               <MailCheck className="w-8 h-8 text-blue-500 mx-auto mb-2" />
               <p className="text-sm text-gray-600">OTP sent to <strong>{email}</strong></p>
             </div>
+            {debugOtp && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                Dev OTP: <strong>{debugOtp}</strong>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-digit OTP</label>
